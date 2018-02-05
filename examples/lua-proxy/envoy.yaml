@@ -1,8 +1,3 @@
-admin:
-  access_log_path: /tmp/admin_access.log
-  address:
-    socket_address: { address: 127.0.0.1, port_value: 9901 }
-
 static_resources:
   listeners:
   - name: main
@@ -15,65 +10,47 @@ static_resources:
       - name: envoy.http_connection_manager
         config:
           stat_prefix: ingress_http
-          codec_type: AUTO
+          codec_type: auto
           route_config:
             name: local_route
             virtual_hosts:
             - name: local_service
-              domains: ["*"]
+              domains:
+              - "*"
               routes:
-              - match: { prefix: "/" }
-                route: { cluster: web_service }
+              - match:
+                  prefix: "/"
+                route: 
+                  cluster: web_service
           http_filters:
-#          - name: "lua"
-#            config:
-#              inline_code: |
-#                function envoy_on_request(req)
-#
-#                  -- make request to auth service to authorize request
-#                  local headers, body = req:httpCall(
-#                    -- service
-#                    "auth_service",
-#
-#                    -- headers
-#                    {
-#                      [":method"] = "GET",
-#                      [":path"] = "/",
-#                      [":authority"] = "auth_service",
-#                      ["x-requested-path"] = req:headers():get(":path"),
-#                      ["x-requested-method"] = req:headers():get(":method"),
-#                      ["x-requested-auth"] = req:headers():get("authorization"),
-#                    },
-#
-#                    -- body
-#                    "hello from envoy",
-#
-#                    -- timeout
-#                    5000
-#                  )
-#
-#                  req:logInfo("foo")
-#                  for key, value in pairs(headers) do
-#                    req:logInfo(key, value)
-#                  end
-#                  req:logInfo("end")
-#
-#                  req:respond(
-#                    {[":status"] = headers[":status"]},
-#                    "nope"
-#                  )
-#                end
+          - name: envoy.lua
+            config:
+              inline_code: |
+                function envoy_on_request(request_handle)
+                  request_handle:headers():add("foo", "bar")
+                end
+
+                function envoy_on_response(response_handle)
+                  body_size = response_handle:body():length()
+                  response_handle:headers():add("response-body-size", tostring(body_size))
+                end
+
           - name: envoy.router
             config: {}
 
   clusters:
   - name: web_service
     connect_timeout: 0.25s
-    type: STATIC_DNS
-    lb_policy: ROUND_ROBIN
+    type: strict_dns # static
+    lb_policy: round_robin
     hosts:
     - socket_address:
         address: web_service
         port_value: 80
 
-
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address:
+      address: 0.0.0.0
+      port_value: 9901

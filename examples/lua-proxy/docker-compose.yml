@@ -12,9 +12,13 @@ services:
     expose:
       - "80"
       - "8001"
+      - "9901"
+      - "8082"
     ports:
       - "8000:80"
       - "8001:8001"
+      - "9901:9901"
+      - "8082:8082"
 
   web_service:
     build:
@@ -26,6 +30,8 @@ services:
           - web_service
     expose:
       - "80"
+    ports:
+      - "8080:80"
 
 networks:
   envoymesh: {}
